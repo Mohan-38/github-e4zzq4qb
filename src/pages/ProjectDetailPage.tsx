@@ -8,15 +8,20 @@ import {
   Info, 
   CheckCircle, 
   XCircle,
-  MessageCircle
+  MessageCircle,
+  FileText,
+  Download,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useProjects } from '../context/ProjectContext';
 
 const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects } = useProjects();
+  const { projects, getDocumentsByReviewStage } = useProjects();
   const project = projects.find(p => p.id === id);
+  const [expandedReviewStage, setExpandedReviewStage] = useState<string | null>(null);
   
   if (!project) {
     return (
@@ -63,6 +68,36 @@ const ProjectDetailPage = () => {
     navigate(`/checkout/${project.id}`);
   };
 
+  const reviewStages = [
+    { 
+      value: 'review_1', 
+      label: 'Review 1', 
+      description: 'Initial project review and requirements' 
+    },
+    { 
+      value: 'review_2', 
+      label: 'Review 2', 
+      description: 'Mid-project review and progress assessment' 
+    },
+    { 
+      value: 'review_3', 
+      label: 'Review 3', 
+      description: 'Final review and project completion' 
+    }
+  ];
+
+  const toggleReviewStage = (stage: string) => {
+    setExpandedReviewStage(expandedReviewStage === stage ? null : stage);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-24 pb-16">
       <div className="container mx-auto px-4 md:px-6">
@@ -103,8 +138,8 @@ const ProjectDetailPage = () => {
           
           {/* Project Content */}
           <div className="p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-              <div className="md:w-2/3">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+              <div className="lg:w-2/3">
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-200 mb-4">{project.title}</h1>
                 
                 <div className="flex items-center text-slate-500 dark:text-slate-400 mb-6">
@@ -132,11 +167,99 @@ const ProjectDetailPage = () => {
                     </>
                   )}
                 </div>
+
+                {/* Project Documents Section */}
+                <div className="mb-8">
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-200 mb-4">Project Documents</h2>
+                  <div className="space-y-4">
+                    {reviewStages.map((stage) => {
+                      const documents = getDocumentsByReviewStage(project.id, stage.value);
+                      const isExpanded = expandedReviewStage === stage.value;
+                      
+                      return (
+                        <div key={stage.value} className="border border-slate-200 dark:border-slate-700 rounded-lg">
+                          <button
+                            onClick={() => toggleReviewStage(stage.value)}
+                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            <div>
+                              <h3 className="font-medium text-slate-900 dark:text-slate-200">
+                                {stage.label}
+                              </h3>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                {stage.description}
+                              </p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-xs">
+                                {documents.length} docs
+                              </span>
+                              {isExpanded ? (
+                                <ChevronUp className="h-5 w-5 text-slate-400" />
+                              ) : (
+                                <ChevronDown className="h-5 w-5 text-slate-400" />
+                              )}
+                            </div>
+                          </button>
+                          
+                          {isExpanded && (
+                            <div className="px-4 pb-4 border-t border-slate-200 dark:border-slate-700">
+                              {documents.length === 0 ? (
+                                <div className="text-center py-6 text-slate-500 dark:text-slate-400">
+                                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">No documents available for this review stage</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-2 mt-3">
+                                  {documents.map((doc) => (
+                                    <div
+                                      key={doc.id}
+                                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
+                                    >
+                                      <div className="flex items-center space-x-3">
+                                        <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                        <div>
+                                          <h4 className="font-medium text-slate-900 dark:text-slate-200">
+                                            {doc.name}
+                                          </h4>
+                                          <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+                                            <span>{formatFileSize(doc.size)}</span>
+                                            <span>•</span>
+                                            <span className="capitalize">{doc.document_category}</span>
+                                          </div>
+                                          {doc.description && (
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                              {doc.description}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      <a
+                                        href={doc.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                                        title="Download document"
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
               
               {/* Project Purchase Card */}
-              <div className="md:w-1/3">
-                <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-6 shadow-sm">
+              <div className="lg:w-1/3">
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-6 shadow-sm sticky top-24">
                   <div className="text-3xl font-bold text-slate-900 dark:text-slate-200 mb-4">
                     {formattedPrice}
                   </div>
@@ -167,6 +290,7 @@ const ProjectDetailPage = () => {
                           <li>Documentation</li>
                           <li>Installation guide</li>
                           <li>Support via email</li>
+                          <li>Project review documents</li>
                         </ul>
                       </div>
                     </div>

@@ -10,10 +10,12 @@ import {
   Copy,
   ExternalLink,
   Clock,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Download
 } from 'lucide-react';
 import { useProjects } from '../context/ProjectContext';
-import { sendOrderConfirmation } from '../utils/email';
+import { sendOrderConfirmation, generateDownloadInstructions } from '../utils/email';
 
 interface PaymentMethod {
   id: string;
@@ -33,7 +35,7 @@ interface UPIApp {
 const CheckoutPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, addOrder } = useProjects();
+  const { projects, addOrder, getProjectDocuments } = useProjects();
   const project = projects.find(p => p.id === id);
   
   // Form state
@@ -200,33 +202,41 @@ const CheckoutPage = () => {
       setShowQRCode(true);
       
       // Simulate payment verification (in real app, you'd poll your backend)
-      setTimeout(() => {
+      setTimeout(async () => {
         // For demo purposes, randomly succeed or fail
         const success = Math.random() > 0.3; // 70% success rate
         
         if (success) {
           setPaymentStatus('success');
           
-          // Add order to database
-          addOrder({
-            projectId: project.id,
-            projectTitle: project.title,
-            customerName,
-            customerEmail,
-            price: project.price,
-            status: 'completed'
-          });
-          
-          // Send confirmation email
-          sendOrderConfirmation(
-            {
-              project_title: project.title,
-              customer_name: customerName,
-              price: formattedPrice,
-              order_id: txnId
-            },
-            customerEmail
-          );
+          try {
+            // Add order to database (this will automatically trigger document email)
+            await addOrder({
+              projectId: project.id,
+              projectTitle: project.title,
+              customerName,
+              customerEmail,
+              price: project.price,
+              status: 'completed'
+            });
+            
+            // Send order confirmation email with download instructions
+            const downloadInstructions = generateDownloadInstructions(project.title, txnId);
+            await sendOrderConfirmation(
+              {
+                project_title: project.title,
+                customer_name: customerName,
+                price: formattedPrice,
+                order_id: txnId,
+                download_instructions: downloadInstructions
+              },
+              customerEmail
+            );
+          } catch (error) {
+            console.error('Error processing order:', error);
+            // Payment was successful but order processing failed
+            // In a real app, you'd want to handle this more gracefully
+          }
         } else {
           setPaymentStatus('failed');
         }
@@ -257,6 +267,10 @@ const CheckoutPage = () => {
   const handleNewPurchase = () => {
     navigate('/projects');
   };
+
+  // Get project documents count for display
+  const projectDocuments = getProjectDocuments(project.id);
+  const documentsCount = projectDocuments.length;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-24 pb-16">
@@ -316,6 +330,19 @@ const CheckoutPage = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Documents Info */}
+              {documentsCount > 0 && (
+                <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="flex items-start">
+                    <FileText className="h-5 w-5 text-green-600 dark:text-green-400 mr-2 mt-0.5" />
+                    <div className="text-sm text-green-800 dark:text-green-300">
+                      <p className="font-medium mb-1">Project Documents Included</p>
+                      <p>{documentsCount} documents across all review stages will be delivered via email.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -370,6 +397,9 @@ const CheckoutPage = () => {
                           className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200"
                           required
                         />
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                          Project documents will be sent to this email address
+                        </p>
                       </div>
                     </div>
 
@@ -556,7 +586,7 @@ const CheckoutPage = () => {
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-200 mb-2">Payment Successful!</h2>
                   <p className="text-slate-600 dark:text-slate-400 mb-6">
-                    Thank you for your purchase. You'll receive an email with download instructions shortly.
+                    Thank you for your purchase. You'll receive emails with order confirmation and download links shortly.
                   </p>
                   
                   <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-6">
@@ -565,6 +595,12 @@ const CheckoutPage = () => {
                       <p>Transaction ID: {transactionId}</p>
                       <p>Project: {project.title}</p>
                       <p>Amount: {formattedPrice}</p>
+                      {documentsCount > 0 && (
+                        <p className="mt-2 flex items-center justify-center">
+                          <FileText className="h-4 w-4 mr-1" />
+                          {documentsCount} project documents will be delivered via email
+                        </p>
+                      )}
                     </div>
                   </div>
 

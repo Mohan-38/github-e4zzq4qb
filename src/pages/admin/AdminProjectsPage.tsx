@@ -8,10 +8,12 @@ import {
   X, 
   ChevronDown, 
   MoreHorizontal,
-  Filter
+  Filter,
+  FileText
 } from 'lucide-react';
 import { useProjects } from '../../context/ProjectContext';
 import AdminLayout from '../../components/admin/AdminLayout';
+import ProjectDocumentsManager from '../../components/admin/ProjectDocumentsManager';
 import { Project } from '../../types';
 
 const AdminProjectsPage = () => {
@@ -19,6 +21,7 @@ const AdminProjectsPage = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [sortField, setSortField] = useState<keyof Project>('title');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -136,6 +139,12 @@ const AdminProjectsPage = () => {
   const openDeleteModal = (project: Project) => {
     setCurrentProject(project);
     setIsDeleteModalOpen(true);
+  };
+
+  // Open documents modal
+  const openDocumentsModal = (project: Project) => {
+    setCurrentProject(project);
+    setIsDocumentsModalOpen(true);
   };
 
   // Handle form input changes
@@ -419,6 +428,13 @@ const AdminProjectsPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => openDocumentsModal(project)}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 p-1"
+                            title="Manage Documents"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => openEditModal(project)}
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1"
@@ -890,6 +906,31 @@ const AdminProjectsPage = () => {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Documents Management Modal */}
+      {isDocumentsModalOpen && currentProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Documents - {currentProject.title}
+                </h2>
+                <button 
+                  onClick={() => setIsDocumentsModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <ProjectDocumentsManager project={currentProject} />
             </div>
           </div>
         </div>
