@@ -6,7 +6,7 @@ import ProjectCard from '../components/projects/ProjectCard';
 
 const HomePage = () => {
   const { projects } = useProjects();
-  const featuredProjects = projects.filter(project => project.featured).slice(0, 3);
+  const featuredProjects = projects?.filter(project => project.featured)?.slice(0, 3) || [];
   const particlesContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
