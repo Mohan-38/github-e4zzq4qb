@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Project, Inquiry, Order, ProjectDocument } from '../types';
-import { sendDocumentDelivery, sendImmediateDocumentDelivery } from '../utils/email';
+import { sendDocumentDelivery, generateDownloadInstructions } from '../utils/email';
 
 type ProjectContextType = {
   projects: Project[];
@@ -65,22 +65,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Load projects from Supabase on mount
   useEffect(() => {
     const fetchProjects = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching projects:', error);
-          return;
-        }
-
-        setProjects(data || []);
-      } catch (error) {
-        console.error('Error in fetchProjects:', error);
-        setProjects([]);
+      if (error) {
+        console.error('Error fetching projects:', error);
+        return;
       }
+
+      setProjects(data || []);
     };
 
     fetchProjects();
@@ -101,22 +96,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Load inquiries from Supabase
   useEffect(() => {
     const fetchInquiries = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('inquiries')
-          .select('*')
-          .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('inquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching inquiries:', error);
-          return;
-        }
-
-        setInquiries(data || []);
-      } catch (error) {
-        console.error('Error in fetchInquiries:', error);
-        setInquiries([]);
+      if (error) {
+        console.error('Error fetching inquiries:', error);
+        return;
       }
+
+      setInquiries(data || []);
     };
 
     fetchInquiries();
@@ -137,22 +127,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Load orders from Supabase
   useEffect(() => {
     const fetchOrders = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching orders:', error);
-          return;
-        }
-
-        setOrders(data || []);
-      } catch (error) {
-        console.error('Error in fetchOrders:', error);
-        setOrders([]);
+      if (error) {
+        console.error('Error fetching orders:', error);
+        return;
       }
+
+      setOrders(data || []);
     };
 
     fetchOrders();
@@ -173,23 +158,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Load project documents from Supabase
   useEffect(() => {
     const fetchProjectDocuments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('project_documents')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('project_documents')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching project documents:', error);
-          return;
-        }
-
-        setProjectDocuments(data || []);
-      } catch (error) {
-        console.error('Error in fetchProjectDocuments:', error);
-        setProjectDocuments([]);
+      if (error) {
+        console.error('Error fetching project documents:', error);
+        return;
       }
+
+      setProjectDocuments(data || []);
     };
 
     fetchProjectDocuments();
@@ -323,33 +303,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setOrders(prevOrders => [...prevOrders, data]);
 
-    // Send document delivery email immediately after successful order
+    // Automatically send document delivery email after successful order
+    // Use the newly created order data directly instead of searching in state
     try {
-      // Get all documents for the project
-      const documents = getProjectDocuments(order.projectId);
-      
-      if (documents.length > 0) {
-        // Format documents for email
-        const formattedDocuments = documents.map(doc => ({
-          name: doc.name,
-          url: doc.url,
-          category: doc.document_category,
-          review_stage: doc.review_stage
-        }));
-
-        // Send document delivery email immediately
-        await sendImmediateDocumentDelivery(
-          data.id,
-          order.customerEmail,
-          order.customerName,
-          order.projectTitle,
-          formattedDocuments
-        );
-
-        console.log('Document delivery email sent successfully');
-      } else {
-        console.log('No documents found for project, skipping document delivery email');
-      }
+      await sendProjectDocumentsForOrder(data, order.customerEmail, order.customerName);
     } catch (emailError) {
       console.error('Error sending document delivery email:', emailError);
       // Don't throw here as the order was successful, just log the email error
@@ -454,7 +411,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  // Helper function to send documents for a specific order
+  // Helper function to send documents for a specific order object
   const sendProjectDocumentsForOrder = async (order: Order, customerEmail: string, customerName: string) => {
     try {
       // Get all documents for the project

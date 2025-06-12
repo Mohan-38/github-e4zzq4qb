@@ -232,8 +232,6 @@ const CheckoutPage = () => {
               },
               customerEmail
             );
-
-            console.log('Order processed successfully and emails sent');
           } catch (error) {
             console.error('Error processing order:', error);
             // Payment was successful but order processing failed
@@ -339,8 +337,8 @@ const CheckoutPage = () => {
                   <div className="flex items-start">
                     <FileText className="h-5 w-5 text-green-600 dark:text-green-400 mr-2 mt-0.5" />
                     <div className="text-sm text-green-800 dark:text-green-300">
-                      <p className="font-medium mb-1">📧 Instant Email Delivery</p>
-                      <p>{documentsCount} project documents will be delivered to your email immediately after payment confirmation.</p>
+                      <p className="font-medium mb-1">Project Documents Included</p>
+                      <p>{documentsCount} documents across all review stages will be delivered via email.</p>
                     </div>
                   </div>
                 </div>
@@ -400,7 +398,7 @@ const CheckoutPage = () => {
                           required
                         />
                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                          📧 Project documents and download links will be sent to this email address immediately after payment
+                          Project documents will be sent to this email address
                         </p>
                       </div>
                     </div>
@@ -588,25 +586,21 @@ const CheckoutPage = () => {
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-200 mb-2">Payment Successful!</h2>
                   <p className="text-slate-600 dark:text-slate-400 mb-6">
-                    Thank you for your purchase. You should receive emails with order confirmation and download links shortly.
+                    Thank you for your purchase. You'll receive emails with order confirmation and download links shortly.
                   </p>
                   
                   <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-6">
                     <div className="text-sm text-green-800 dark:text-green-300">
-                      <p className="font-medium mb-2">📧 Email Delivery Status:</p>
-                      <p>✅ Order confirmation email sent</p>
+                      <p className="font-medium mb-2">Order Details:</p>
+                      <p>Transaction ID: {transactionId}</p>
+                      <p>Project: {project.title}</p>
+                      <p>Amount: {formattedPrice}</p>
                       {documentsCount > 0 && (
-                        <p className="flex items-center justify-center mt-1">
+                        <p className="mt-2 flex items-center justify-center">
                           <FileText className="h-4 w-4 mr-1" />
-                          ✅ {documentsCount} project documents delivered to your email
+                          {documentsCount} project documents will be delivered via email
                         </p>
                       )}
-                      <div className="mt-3 p-2 bg-white dark:bg-slate-800 rounded border">
-                        <p className="font-medium">Order Details:</p>
-                        <p>Transaction ID: {transactionId}</p>
-                        <p>Project: {project.title}</p>
-                        <p>Amount: {formattedPrice}</p>
-                      </div>
                     </div>
                   </div>
 
