@@ -1,30 +1,31 @@
 import emailjs from '@emailjs/browser';
 
-// Configuration for both EmailJS accounts
+// Configuration for all EmailJS accounts
 const CONFIG = {
-  // Primary Account (Existing working account)
+  // Primary Account (Order confirmations, contact forms)
   primary: {
     serviceId: 'service_qj44izj',
     publicKey: 'aImlP6dotqO-E3y6h',
     templates: {
       contact: 'template_k92zaj2',
-      order: 'purchase_confirmation'
+      order: 'purchase_confirmation' // Verify this ID matches your template
     }
   },
-  // Secondary Account (New account with document delivery template)
+  // Document Delivery Account (mohanfiles@gmail.com)
   documentAccount: {
-    serviceId: 'service_3x190fr',      // Replace with actual service ID from new account
-    templateId: 'document_delivery',    // Replace with actual template ID from new account
-    publicKey: 'exhGN1uuooZbFQ3HL',
-    userId: 'exhGN1uuooZbFQ3HL'
+    serviceId: 'service_3x190fr',      // From mohanfiles@gmail.com
+    templateId: 'document_delivery',   // Confirm in EmailJS dashboard
+    publicKey: 'exhGN1uuooZbFQ3HL'    // From mohanfiles@gmail.com
   },
-  developerEmail: 'mohanselemophile@gmail.com'
+  company: {
+    name: 'Your Company Name',
+    supportEmail: 'support@yourcompany.com',
+    developerEmail: 'mohanselenophile@gmail.com'
+  }
 };
 
-// Initialize both EmailJS accounts
-emailjs.init(CONFIG.primary.publicKey); // Primary account
-emailjs.init(CONFIG.documentAccount.userId, {
-  publicKey: CONFIG.documentAccount.publicKey,
+// Initialize EmailJS with the primary account by default
+emailjs.init(CONFIG.primary.publicKey, {
   blockHeadless: true
 });
 
@@ -70,14 +71,15 @@ const getCurrentDateTime = () => {
   return {
     date: now.toLocaleDateString(),
     time: now.toLocaleTimeString(),
-    datetime: now.toISOString()
+    datetime: now.toISOString(),
+    year: now.getFullYear().toString()
   };
 };
 
 // Email Services
 
 /**
- * Sends contact form email using primary account
+ * Sends contact form email (uses primary account)
  */
 export const sendContactForm = async (data: ContactFormData): Promise<void> => {
   if (!validateEmail(data.from_email)) {
@@ -99,19 +101,23 @@ export const sendContactForm = async (data: ContactFormData): Promise<void> => {
         current_date: date,
         current_time: time,
         title: `New inquiry from ${data.from_name}`,
-        to_email: CONFIG.developerEmail,
+        to_email: CONFIG.company.developerEmail,
         reply_to: data.from_email
       },
       CONFIG.primary.publicKey
     );
   } catch (error) {
-    console.error('Contact form email failed:', error);
+    console.error('Contact form email failed:', {
+      error: error instanceof Error ? error.message : error,
+      service: CONFIG.primary.serviceId,
+      template: CONFIG.primary.templates.contact
+    });
     throw new Error('Failed to send your message. Please try again later.');
   }
 };
 
 /**
- * Sends order confirmation using primary account
+ * Sends order confirmation (uses primary account)
  */
 export const sendOrderConfirmation = async (
   data: OrderConfirmationData,
@@ -121,7 +127,7 @@ export const sendOrderConfirmation = async (
     throw new Error('Invalid recipient email address');
   }
 
-  const { date } = getCurrentDateTime();
+  const { date, year } = getCurrentDateTime();
 
   try {
     await emailjs.send(
@@ -131,16 +137,24 @@ export const sendOrderConfirmation = async (
         ...data,
         email: recipientEmail,
         current_date: date,
+        current_year: year,
         to_email: recipientEmail,
-        reply_to: data.support_email || CONFIG.developerEmail,
+        company_name: CONFIG.company.name,
+        reply_to: data.support_email || CONFIG.company.supportEmail,
         download_instructions: data.download_instructions || 
-          'You will receive a separate email with download links for all project documents shortly.',
-        support_email: CONFIG.developerEmail
+          'You will receive a separate email with download links shortly.',
+        support_email: CONFIG.company.supportEmail
       },
       CONFIG.primary.publicKey
     );
   } catch (error) {
-    console.error('Order confirmation failed:', error);
+    console.error('Order confirmation failed:', {
+      error: error instanceof Error ? error.message : error,
+      status: (error as any)?.status,
+      service: CONFIG.primary.serviceId,
+      template: CONFIG.primary.templates.order,
+      recipient: recipientEmail
+    });
     throw new Error('Failed to send order confirmation. Please try again later.');
   }
 };
@@ -166,46 +180,22 @@ const formatDocumentsHtml = (documents: DocumentDeliveryData['documents']) => {
 };
 
 /**
- * Formats documents for plain text email display
- */
-const formatDocumentsText = (documents: DocumentDeliveryData['documents']) => {
-  return documents.map(doc => `
-📄 ${doc.name}
-   Category: ${doc.category.charAt(0).toUpperCase() + doc.category.slice(1)}
-   Review Stage: ${doc.review_stage.replace('_', ' ').toUpperCase()}
-   Download Link: ${doc.url}
-   
-`).join('');
-};
-
-/**
- * Generates summary of documents by review stage
- */
-const generateStageSummary = (documents: DocumentDeliveryData['documents']) => {
-  const documentsByStage = documents.reduce((acc, doc) => {
-    const stage = doc.review_stage;
-    if (!acc[stage]) acc[stage] = [];
-    acc[stage].push(doc);
-    return acc;
-  }, {} as Record<string, typeof documents>);
-
-  return Object.entries(documentsByStage)
-    .map(([stage, docs]) => `${stage.replace('_', ' ').toUpperCase()}: ${docs.length} documents`)
-    .join(', ');
-};
-
-/**
- * Sends document delivery email using secondary account
+ * Sends document delivery email (uses mohanfiles@gmail.com account)
  */
 export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<void> => {
   if (!validateEmail(data.customer_email)) {
     throw new Error('Invalid recipient email address');
   }
 
-  const { date } = getCurrentDateTime();
+  // Switch to document account (mohanfiles@gmail.com)
+  emailjs.init(CONFIG.documentAccount.publicKey, {
+    blockHeadless: true
+  });
+
+  const { date, year } = getCurrentDateTime();
 
   try {
-    const response = await emailjs.send(
+    await emailjs.send(
       CONFIG.documentAccount.serviceId,
       CONFIG.documentAccount.templateId,
       {
@@ -214,131 +204,75 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
         project_title: data.project_title,
         order_id: data.order_id,
         documents_html: formatDocumentsHtml(data.documents),
-        documents_text: formatDocumentsText(data.documents),
         documents_count: data.documents.length,
-        stage_summary: generateStageSummary(data.documents),
         current_date: date,
+        current_year: year,
+        company_name: CONFIG.company.name,
         access_expires: data.access_expires || 'Never (lifetime access)',
-        support_email: CONFIG.developerEmail,
+        support_email: CONFIG.company.supportEmail,
         to_email: data.customer_email,
-        reply_to: CONFIG.developerEmail,
-        project_name: data.project_title,
-        customer: data.customer_name,
-        total_documents: data.documents.length,
-        delivery_date: date
+        reply_to: CONFIG.company.supportEmail
       },
       CONFIG.documentAccount.publicKey
     );
-
-    if (response.status !== 200) {
-      throw new Error(`EmailJS returned status ${response.status}`);
-    }
-
-    console.log(`Document delivery email sent successfully to ${data.customer_email}`);
   } catch (error) {
-    console.error('Document delivery email failed:', {
-      error,
-      templateUsed: CONFIG.documentAccount.templateId,
-      serviceUsed: CONFIG.documentAccount.serviceId,
-      timestamp: new Date().toISOString()
+    console.error('Document delivery failed:', {
+      error: error instanceof Error ? error.message : error,
+      status: (error as any)?.status,
+      service: CONFIG.documentAccount.serviceId,
+      template: CONFIG.documentAccount.templateId,
+      recipient: data.customer_email
     });
-    throw new Error('Failed to send document delivery email. Please try again later.');
+    throw new Error('Failed to send documents. Our team has been notified.');
+  } finally {
+    // Revert to primary account
+    emailjs.init(CONFIG.primary.publicKey, {
+      blockHeadless: true
+    });
   }
 };
 
 /**
- * Sends immediate document delivery after successful order
- */
-export const sendImmediateDocumentDelivery = async (
-  orderId: string,
-  customerEmail: string,
-  customerName: string,
-  projectTitle: string,
-  documents: DocumentDeliveryData['documents']
-): Promise<void> => {
-  if (documents.length === 0) {
-    console.log('No documents found for project, skipping document delivery email');
-    return;
-  }
-
-  try {
-    await sendDocumentDelivery({
-      project_title: projectTitle,
-      customer_name: customerName,
-      customer_email: customerEmail,
-      order_id: orderId,
-      documents: documents,
-      access_expires: 'Never (lifetime access)'
-    });
-
-    console.log(`Document delivery completed for order ${orderId}`);
-  } catch (error) {
-    console.error('Failed to send document delivery email:', error);
-    throw error;
-  }
-};
-
-// Generate download instructions for order confirmation
-export const generateDownloadInstructions = (projectTitle: string, orderId: string): string => {
-  return `
-Thank you for purchasing "${projectTitle}"!
-
-Your Order ID: ${orderId}
-
-📧 What happens next:
-• You will receive a separate email containing download links for all project documents
-• Documents are organized by review stages
-• Each document includes presentations, documentation, and reports
-• You'll have lifetime access to these documents
-
-📞 Need help?
-Contact us at ${CONFIG.developerEmail}
-
-Thank you for your business! 🚀
-  `.trim();
-};
-
-/**
- * Test function to verify email services
+ * Test all email services
  */
 export const testEmailServices = async (testEmail: string = 'test@example.com') => {
+  const testDocs = [{
+    name: 'Test Document.pdf',
+    url: 'https://example.com/test.pdf',
+    category: 'manual',
+    review_stage: 'final'
+  }];
+
   try {
-    // Test contact form
+    // Test contact form (primary account)
     await sendContactForm({
       from_name: 'Test User',
       from_email: testEmail,
-      project_type: 'Website Development',
+      project_type: 'Website',
       budget: '$1000-$2000',
       message: 'This is a test message'
     });
-    console.log('Contact form test email sent successfully');
 
-    // Test order confirmation
+    // Test order confirmation (primary account)
     await sendOrderConfirmation({
       project_title: 'Test Project',
       customer_name: 'Test User',
       price: '$99.00',
       order_id: 'TEST-123'
     }, testEmail);
-    console.log('Order confirmation test email sent successfully');
 
-    // Test document delivery
+    // Test document delivery (mohanfiles@gmail.com account)
     await sendDocumentDelivery({
       project_title: 'Test Project',
       customer_name: 'Test User',
       customer_email: testEmail,
       order_id: 'TEST-123',
-      documents: [{
-        name: 'Test Document.pdf',
-        url: 'https://example.com/test.pdf',
-        category: 'manual',
-        review_stage: 'final'
-      }]
+      documents: testDocs
     });
-    console.log('Document delivery test email sent successfully');
 
+    console.log('✅ All email tests completed successfully');
   } catch (error) {
-    console.error('Email service test failed:', error);
+    console.error('❌ Email test failed:', error);
     throw error;
   }
 };
