@@ -56,28 +56,6 @@ const convertKeysToSnakeCase = (obj: any): any => {
   return obj;
 };
 
-// Utility function to convert snake_case to camelCase
-const toCamelCase = (str: string): string => {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-};
-
-// Utility function to convert object keys from snake_case to camelCase
-const convertKeysToCamelCase = (obj: any): any => {
-  if (Array.isArray(obj)) {
-    return obj.map(convertKeysToCamelCase);
-  }
-  
-  if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((acc, key) => {
-      const camelKey = toCamelCase(key);
-      acc[camelKey] = convertKeysToCamelCase(obj[key]);
-      return acc;
-    }, {} as any);
-  }
-  
-  return obj;
-};
-
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -159,18 +137,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      // Convert snake_case to camelCase for frontend compatibility
-      const convertedOrders = (data || []).map(order => ({
-        ...order,
-        projectId: order.project_id, // Add camelCase version
-        customerName: order.customer_name,
-        customerEmail: order.customer_email,
-        projectTitle: order.project_title,
-        createdAt: order.created_at,
-        updatedAt: order.updated_at
-      }));
-
-      setOrders(convertedOrders);
+      setOrders(data || []);
     };
 
     fetchOrders();
@@ -202,7 +169,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      console.log('Fetched project documents:', data); // Debug log
       setProjectDocuments(data || []);
     };
 
@@ -321,15 +287,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const addOrder = async (order: Omit<Order, 'id' | 'created_at' | 'updated_at'>) => {
-    // Convert keys to snake_case for database
-    const snakeCaseData = {
-      customer_name: order.customerName,
-      customer_email: order.customerEmail,
-      project_id: order.projectId,
-      project_title: order.projectTitle,
-      price: order.price,
-      status: order.status
-    };
+    // Convert keys to snake_case
+    const snakeCaseData = convertKeysToSnakeCase(order);
 
     const { data, error } = await supabase
       .from('orders')
@@ -342,28 +301,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       throw error;
     }
 
-    // Convert back to camelCase for frontend
-    const convertedOrder = {
-      ...data,
-      projectId: data.project_id,
-      customerName: data.customer_name,
-      customerEmail: data.customer_email,
-      projectTitle: data.project_title,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    };
-
-    setOrders(prevOrders => [...prevOrders, convertedOrder]);
+    setOrders(prevOrders => [...prevOrders, data]);
 
     // Automatically send document delivery email after successful order
+    // Use the newly created order data directly instead of searching in state
     try {
-      await sendProjectDocumentsForOrder(convertedOrder, order.customerEmail, order.customerName);
+      await sendProjectDocumentsForOrder(data, order.customerEmail, order.customerName);
     } catch (emailError) {
       console.error('Error sending document delivery email:', emailError);
       // Don't throw here as the order was successful, just log the email error
     }
 
-    return convertedOrder;
+    return data;
   };
 
   const updateOrderStatus = async (id: string, status: string) => {
@@ -451,13 +400,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const getProjectDocuments = (projectId: string): ProjectDocument[] => {
-    console.log('Getting documents for project ID:', projectId); // Debug log
-    console.log('Available documents:', projectDocuments); // Debug log
-    
-    const documents = projectDocuments.filter(doc => doc.project_id === projectId && doc.is_active);
-    console.log('Filtered documents:', documents); // Debug log
-    
-    return documents;
+    return projectDocuments.filter(doc => doc.project_id === projectId && doc.is_active);
   };
 
   const getDocumentsByReviewStage = (projectId: string, reviewStage: string): ProjectDocument[] => {

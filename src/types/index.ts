@@ -26,14 +26,20 @@ export interface Inquiry {
 
 export interface Order {
   id: string;
-  projectId: string;
+  projectId: string; // camelCase for frontend
+  project_id?: string; // snake_case from database
   projectTitle: string;
+  project_title?: string; // snake_case from database
   customerName: string;
+  customer_name?: string; // snake_case from database
   customerEmail: string;
+  customer_email?: string; // snake_case from database
   price: number;
   status: string;
   created_at?: string;
   updated_at?: string;
+  createdAt?: string; // camelCase version
+  updatedAt?: string; // camelCase version
 }
 
 export interface ProjectDocument {

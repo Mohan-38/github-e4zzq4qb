@@ -54,14 +54,8 @@ const AdminDocumentDeliveryPage = () => {
     }).format(price);
   };
 
-  // Filter orders to only show those with project documents
-  const ordersWithDocuments = orders.filter(order => {
-    const documents = getProjectDocuments(order.projectId);
-    return documents.length > 0;
-  });
-
   // Filter orders based on search term and status
-  const filteredOrders = ordersWithDocuments.filter(order => {
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       (order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -258,8 +252,10 @@ const AdminDocumentDeliveryPage = () => {
 
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
             <div className="flex flex-col">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Orders with Documents</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-200">{ordersWithDocuments.length}</h3>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Completed Orders</p>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-200">
+                {orders.filter(order => order.status === 'completed').length}
+              </h3>
             </div>
           </div>
 
@@ -267,7 +263,7 @@ const AdminDocumentDeliveryPage = () => {
             <div className="flex flex-col">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Pending Delivery</p>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-200">
-                {ordersWithDocuments.filter(order => order.status === 'pending').length}
+                {orders.filter(order => order.status === 'pending').length}
               </h3>
             </div>
           </div>
@@ -343,21 +339,12 @@ const AdminDocumentDeliveryPage = () => {
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm overflow-hidden mb-8">
           {filteredOrders.length === 0 ? (
             <div className="p-6 text-center">
-              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-200 mb-1">
-                {ordersWithDocuments.length === 0 ? 'No orders with documents found' : 'No orders found'}
-              </h3>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-200 mb-1">No orders found</h3>
               <p className="text-slate-500 dark:text-slate-400">
-                {ordersWithDocuments.length === 0 
-                  ? "No orders have project documents available for delivery." 
+                {orders.length === 0 
+                  ? "No orders have been placed yet." 
                   : "No orders match your search criteria."}
               </p>
-              {ordersWithDocuments.length === 0 && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    <strong>Tip:</strong> Orders will appear here once you add project documents to the associated projects in the Projects management section.
-                  </p>
-                </div>
-              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
