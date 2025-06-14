@@ -113,7 +113,7 @@ export const sendOrderConfirmation = async (
         current_date: date,
         to_email: recipientEmail,    // Recipient address
         reply_to: data.support_email || CONFIG.developerEmail,
-        download_instructions: 'You will receive a separate email with download links for all project documents within a few minutes.',
+        download_instructions: 'You will receive a separate email with download links for all project documents within 24 hours.',
         support_email: CONFIG.developerEmail
       },
       CONFIG.publicKey
@@ -131,41 +131,27 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
 
   const { date } = getCurrentDateTime();
 
-  // Format documents list for email template
+  // Format documents list for email
   const documentsHtml = data.documents.map(doc => `
-    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #f9fafb;">
-      <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">${doc.name}</h4>
-      <p style="margin: 0 0 10px 0; font-size: 14px; color: #6b7280;">
-        <strong>Category:</strong> ${doc.category.charAt(0).toUpperCase() + doc.category.slice(1)} | 
-        <strong>Review Stage:</strong> ${doc.review_stage.replace('_', ' ').toUpperCase()}
+    <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #e5e7eb; border-radius: 5px;">
+      <h4 style="margin: 0 0 5px 0; color: #1f2937;">${doc.name}</h4>
+      <p style="margin: 0 0 5px 0; font-size: 14px; color: #6b7280;">
+        Category: ${doc.category} | Review Stage: ${doc.review_stage.replace('_', ' ').toUpperCase()}
       </p>
       <a href="${doc.url}" 
-         style="display: inline-block; padding: 10px 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;"
+         style="display: inline-block; padding: 8px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;"
          target="_blank">
-        📥 Download Document
+        Download Document
       </a>
     </div>
   `).join('');
 
   const documentsText = data.documents.map(doc => `
-📄 ${doc.name}
-   Category: ${doc.category.charAt(0).toUpperCase() + doc.category.slice(1)}
-   Review Stage: ${doc.review_stage.replace('_', ' ').toUpperCase()}
-   Download Link: ${doc.url}
-   
-`).join('');
-
-  // Create a summary of documents by review stage
-  const documentsByStage = data.documents.reduce((acc, doc) => {
-    const stage = doc.review_stage;
-    if (!acc[stage]) acc[stage] = [];
-    acc[stage].push(doc);
-    return acc;
-  }, {} as Record<string, typeof data.documents>);
-
-  const stageSummary = Object.entries(documentsByStage)
-    .map(([stage, docs]) => `${stage.replace('_', ' ').toUpperCase()}: ${docs.length} documents`)
-    .join(', ');
+    ${doc.name}
+    Category: ${doc.category} | Review Stage: ${doc.review_stage.replace('_', ' ').toUpperCase()}
+    Download: ${doc.url}
+    
+  `).join('');
 
   try {
     await emailjs.send(
@@ -179,23 +165,14 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
         documents_html: documentsHtml,
         documents_text: documentsText,
         documents_count: data.documents.length,
-        stage_summary: stageSummary,
         current_date: date,
         access_expires: data.access_expires || 'Never (lifetime access)',
         support_email: CONFIG.developerEmail,
         to_email: data.customer_email,
-        reply_to: CONFIG.developerEmail,
-        
-        // Additional template variables for better email formatting
-        project_name: data.project_title,
-        customer: data.customer_name,
-        total_documents: data.documents.length,
-        delivery_date: date
+        reply_to: CONFIG.developerEmail
       },
       CONFIG.publicKey
     );
-
-    console.log(`Document delivery email sent successfully to ${data.customer_email}`);
   } catch (error) {
     console.error('Document delivery email failed:', error);
     throw new Error('Failed to send document delivery email. Please try again later.');
@@ -209,52 +186,16 @@ Thank you for purchasing "${projectTitle}"!
 
 Your Order ID: ${orderId}
 
-📧 What happens next:
-• You will receive a separate email within a few minutes containing download links for all project documents
-• Documents are organized by review stages (Review 1, 2, and 3)
-• Each document includes presentations, documentation, and reports as applicable
-• You'll have lifetime access to download these documents
+What happens next:
+1. You will receive a separate email within 24 hours containing download links for all project documents
+2. Documents are organized by review stages (Review 1, 2, and 3)
+3. Each document includes presentations, documentation, and reports as applicable
+4. You'll have lifetime access to download these documents
 
-📞 Need help?
 If you have any questions or need support, please contact us at ${CONFIG.developerEmail}
 
-Thank you for your business! 🚀
+Thank you for your business!
   `.trim();
-};
-
-// Enhanced function to send immediate document delivery after order
-export const sendImmediateDocumentDelivery = async (
-  orderId: string,
-  customerEmail: string,
-  customerName: string,
-  projectTitle: string,
-  documents: Array<{
-    name: string;
-    url: string;
-    category: string;
-    review_stage: string;
-  }>
-): Promise<void> => {
-  if (documents.length === 0) {
-    console.log('No documents found for project, skipping document delivery email');
-    return;
-  }
-
-  try {
-    await sendDocumentDelivery({
-      project_title: projectTitle,
-      customer_name: customerName,
-      customer_email: customerEmail,
-      order_id: orderId,
-      documents: documents,
-      access_expires: 'Never (lifetime access)'
-    });
-
-    console.log(`Document delivery completed for order ${orderId}`);
-  } catch (error) {
-    console.error('Failed to send document delivery email:', error);
-    throw error;
-  }
 };
 
 // Optional: Add this if you need to send test emails during development

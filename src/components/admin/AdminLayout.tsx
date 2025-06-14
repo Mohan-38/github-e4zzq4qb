@@ -9,7 +9,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  Code
+  Code,
+  Send
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -31,6 +32,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { name: 'Projects', path: '/admin/projects', icon: Briefcase },
     { name: 'Inquiries', path: '/admin/inquiries', icon: MessageSquare },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
+    { name: 'Document Delivery', path: '/admin/document-delivery', icon: Send },
   ];
 
   return (

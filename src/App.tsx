@@ -12,6 +12,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminProjectsPage from './pages/admin/AdminProjectsPage';
 import AdminInquiriesPage from './pages/admin/AdminInquiriesPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminDocumentDeliveryPage from './pages/admin/AdminDocumentDeliveryPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
@@ -64,6 +65,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <AdminOrdersPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/document-delivery" 
+                    element={
+                      <ProtectedRoute>
+                        <AdminDocumentDeliveryPage />
                       </ProtectedRoute>
                     } 
                   />

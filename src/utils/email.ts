@@ -40,8 +40,13 @@ interface DocumentDeliveryData {
     url: string;
     category: string;
     review_stage: string;
+    description?: string;
   }>;
+  review_stages?: string;
+  documents_count?: number;
+  current_date?: string;
   access_expires?: string;
+  support_email?: string;
 }
 
 // Utility Functions
@@ -138,6 +143,7 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
       <p style="margin: 0 0 5px 0; font-size: 14px; color: #6b7280;">
         Category: ${doc.category} | Review Stage: ${doc.review_stage.replace('_', ' ').toUpperCase()}
       </p>
+      ${doc.description ? `<p style="margin: 0 0 8px 0; font-size: 13px; color: #9ca3af;">${doc.description}</p>` : ''}
       <a href="${doc.url}" 
          style="display: inline-block; padding: 8px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;"
          target="_blank">
@@ -149,6 +155,7 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
   const documentsText = data.documents.map(doc => `
     ${doc.name}
     Category: ${doc.category} | Review Stage: ${doc.review_stage.replace('_', ' ').toUpperCase()}
+    ${doc.description ? `Description: ${doc.description}` : ''}
     Download: ${doc.url}
     
   `).join('');
@@ -164,10 +171,11 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
         order_id: data.order_id,
         documents_html: documentsHtml,
         documents_text: documentsText,
-        documents_count: data.documents.length,
-        current_date: date,
+        documents_count: data.documents_count || data.documents.length,
+        review_stages: data.review_stages || 'All Review Stages',
+        current_date: data.current_date || date,
         access_expires: data.access_expires || 'Never (lifetime access)',
-        support_email: CONFIG.developerEmail,
+        support_email: data.support_email || CONFIG.developerEmail,
         to_email: data.customer_email,
         reply_to: CONFIG.developerEmail
       },
@@ -196,6 +204,11 @@ If you have any questions or need support, please contact us at ${CONFIG.develop
 
 Thank you for your business!
   `.trim();
+};
+
+// Send document delivery email from admin panel
+export const sendDocumentDeliveryFromAdmin = async (data: DocumentDeliveryData): Promise<void> => {
+  return sendDocumentDelivery(data);
 };
 
 // Optional: Add this if you need to send test emails during development
